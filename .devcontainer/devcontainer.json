@@ -1,0 +1,16 @@
+{
+  "name": "Go Dev 1.17 Buster",
+  "image": "mcr.microsoft.com/vscode/devcontainers/go:1.17-bullseye",
+  "settings": {
+    "terminal.integrated.profiles.linux": {
+      "bash": {
+        "path": "bash",
+        "icon": "terminal-bash"
+      }
+    }
+  },
+  "extensions": [
+    "golang.go"
+  ],
+  "remoteUser": "vscode"
+}
