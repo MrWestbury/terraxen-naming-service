@@ -80,17 +80,11 @@ func (orgsvc *OrganizationService) GetOrganizationById(orgId string) (*Organizat
 func (orgsvc *OrganizationService) ExistsById(orgId string) bool {
 	ctx := context.Background()
 	result := orgsvc.collection.FindOne(ctx, bson.M{"id": orgId})
-	if result.Err() == mongo.ErrNoDocuments {
-		return false
-	}
-	return true
+	return result.Err() != mongo.ErrNoDocuments
 }
 
 func (orgsvc *OrganizationService) ExistsByName(orgName string) bool {
 	ctx := context.Background()
 	result := orgsvc.collection.FindOne(ctx, bson.M{"name": orgName})
-	if result.Err() == mongo.ErrNoDocuments {
-		return false
-	}
-	return true
+	return result.Err() != mongo.ErrNoDocuments
 }

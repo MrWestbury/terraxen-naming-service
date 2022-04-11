@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/MrWestbury/terraxen-naming-service/internals/config"
@@ -30,7 +31,7 @@ func NewApiKeyService(cfg *config.Config) *ApiKeyService {
 }
 
 func (akSvc *ApiKeyService) GenerateNewApiKey(orgId string) (*ApiKey, error) {
-	randStr := "asdasds"
+	randStr := RandString(20)
 	duration, _ := time.ParseDuration("1h")
 	expires := time.Now().Add(duration)
 	ak := &ApiKey{
@@ -46,10 +47,21 @@ func (akSvc *ApiKeyService) GenerateNewApiKey(orgId string) (*ApiKey, error) {
 	return ak, nil
 }
 
+func RandString(n int) string {
+	src := rand.NewSource(time.Now().UnixNano())
+	letterBytes := "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[src.Int63()%int64(len(letterBytes))]
+	}
+	return string(b)
+
+}
+
 func (akSvc *ApiKeyService) ListKeys(orgId string) ([]*ApiKey, error) {
 	ctx := context.Background()
 	filter := bson.D{
-		primitive.E{Key: "organization_id", Value: orgId}, //TODO: fix this filter. cur.Next is returning nothing
+		primitive.E{Key: "organizationid", Value: orgId},
 	}
 	cur, err := akSvc.collection.Find(ctx, filter)
 	defer cur.Close(ctx)
