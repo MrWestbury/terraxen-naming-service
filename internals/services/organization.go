@@ -1,29 +1,37 @@
 package services
 
 import (
+	"context"
 	"errors"
 
+	"github.com/MrWestbury/terraxen-naming-service/internals/config"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type Organisation struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+type Organization struct {
+	Id      string            `json:"id"`
+	Name    string            `json:"name"`
+	OrgVars map[string]string `json:"vars"`
 }
 
 type OrganizationService struct {
-	tmpStore map[string]Organisation
+	BaseService
+	tmpStore map[string]Organization
 }
 
-func NewOrganizationService() *OrganizationService {
+func NewOrganizationService(cfg *config.Config) *OrganizationService {
 	orgsvc := &OrganizationService{
-		tmpStore: make(map[string]Organisation),
+		tmpStore: make(map[string]Organization),
 	}
+	orgsvc.Connect(cfg)
+	orgsvc.collection = orgsvc.client.Collection("organizations")
 
 	return orgsvc
 }
 
-func (orgsvc *OrganizationService) NewOrganization(orgName string) (*Organisation, error) {
+func (orgsvc *OrganizationService) NewOrganization(orgName string) (*Organization, error) {
 	org, err := orgsvc.getOrganizationByName(orgName)
 	if err != nil {
 		return nil, err
@@ -33,20 +41,56 @@ func (orgsvc *OrganizationService) NewOrganization(orgName string) (*Organisatio
 		return nil, errors.New("organization already exists")
 	}
 
-	newOrg := &Organisation{
-		Id:   uuid.NewString(),
-		Name: orgName,
+	newOrg := &Organization{
+		Id:      uuid.NewString(),
+		Name:    orgName,
+		OrgVars: make(map[string]string),
 	}
 
-	orgsvc.tmpStore[newOrg.Id] = *newOrg
-	return newOrg, nil
+	ctx := context.Background()
+	_, err = orgsvc.collection.InsertOne(ctx, newOrg)
+	if err != nil {
+		return nil, err
+	}
+	return newOrg, err
 }
 
-func (orgsvc *OrganizationService) getOrganizationByName(orgName string) (*Organisation, error) {
-	for _, o := range orgsvc.tmpStore {
-		if o.Name == orgName {
-			return &o, nil
-		}
+func (orgsvc *OrganizationService) getOrganizationByName(orgName string) (*Organization, error) {
+	ctx := context.Background()
+	result := orgsvc.collection.FindOne(ctx, bson.M{"name": orgName})
+	if result.Err() == mongo.ErrNoDocuments {
+		return nil, nil
 	}
-	return nil, nil
+	org := &Organization{}
+	result.Decode(org)
+	return org, nil
+}
+
+func (orgsvc *OrganizationService) GetOrganizationById(orgId string) (*Organization, error) {
+	ctx := context.Background()
+	result := orgsvc.collection.FindOne(ctx, bson.M{"id": orgId})
+	if result.Err() == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+	org := &Organization{}
+	result.Decode(org)
+	return org, nil
+}
+
+func (orgsvc *OrganizationService) ExistsById(orgId string) bool {
+	ctx := context.Background()
+	result := orgsvc.collection.FindOne(ctx, bson.M{"id": orgId})
+	if result.Err() == mongo.ErrNoDocuments {
+		return false
+	}
+	return true
+}
+
+func (orgsvc *OrganizationService) ExistsByName(orgName string) bool {
+	ctx := context.Background()
+	result := orgsvc.collection.FindOne(ctx, bson.M{"name": orgName})
+	if result.Err() == mongo.ErrNoDocuments {
+		return false
+	}
+	return true
 }

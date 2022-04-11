@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	cfg := config.GetConfig()
+	cfg := config.GetConfig("test.cfg")
 	api := apis.NewApi(cfg)
 	api.Run(":7070")
 }
