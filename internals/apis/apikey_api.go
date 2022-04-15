@@ -19,6 +19,9 @@ func RegisterApiKeyApi(parentGroup *gin.RouterGroup, apiKeySvc *services.ApiKeyS
 
 	group.GET("/", akApi.ListApiKeys)
 	group.POST("/", akApi.CreateKey)
+
+	group.GET("/:apiId")
+	group.DELETE("/:apiId", akApi.DeleteKey)
 }
 
 func (aka *ApiKeyApi) ListApiKeys(c *gin.Context) {
@@ -43,4 +46,27 @@ func (aka *ApiKeyApi) CreateKey(c *gin.Context) {
 		responseError(c, http.StatusInternalServerError, err.Error())
 	}
 	responseSingleItem(c, key)
+}
+
+func (aka *ApiKeyApi) DeleteKey(c *gin.Context) {
+	orgId := c.GetString("x-organization-id")
+	if orgId == "" {
+		responseError(c, http.StatusForbidden, "Valid API key for an organization required")
+		return
+	}
+
+	apiId := c.Param("apidId")
+	if apiId == "" {
+		responseError(c, http.StatusBadRequest, "Invalid API ID")
+		return
+	}
+
+	apikey := aka.akSvc.GetKey(apiId)
+	if apikey == nil {
+		responseError(c, http.StatusNotFound, "API key not found")
+		return
+	}
+
+	aka.akSvc.DeleteKey(apiId)
+	c.Status(http.StatusNoContent)
 }

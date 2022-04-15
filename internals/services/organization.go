@@ -18,13 +18,10 @@ type Organization struct {
 
 type OrganizationService struct {
 	BaseService
-	tmpStore map[string]Organization
 }
 
 func NewOrganizationService(cfg *config.Config) *OrganizationService {
-	orgsvc := &OrganizationService{
-		tmpStore: make(map[string]Organization),
-	}
+	orgsvc := &OrganizationService{}
 	orgsvc.Connect(cfg)
 	orgsvc.collection = orgsvc.client.Collection("organizations")
 

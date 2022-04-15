@@ -37,3 +37,10 @@ func (bs *BaseService) Connect(cfg *config.Config) {
 	}
 	bs.client = db
 }
+
+func CloseCursor(ctx context.Context, cur *mongo.Cursor) {
+	err := cur.Close(ctx)
+	if err != nil {
+		log.Printf("Failed closing cursor: %v", err)
+	}
+}

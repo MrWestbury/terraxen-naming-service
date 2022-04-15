@@ -7,13 +7,16 @@ import (
 	"time"
 
 	"github.com/MrWestbury/terraxen-naming-service/internals/config"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type ApiKey struct {
+	Id             string            `json:"id"`
 	OrganizationId string            `json:"organization_id"`
+	Name           string            `json:"name"`
 	Key            string            `json:"key"`
 	Expires        time.Time         `json:"expires"`
 	Scope          map[string]string `json:"scope"`
@@ -35,6 +38,7 @@ func (akSvc *ApiKeyService) GenerateNewApiKey(orgId string) (*ApiKey, error) {
 	duration, _ := time.ParseDuration("1h")
 	expires := time.Now().Add(duration)
 	ak := &ApiKey{
+		Id:             uuid.NewString(),
 		OrganizationId: orgId,
 		Key:            fmt.Sprintf("API-%s", randStr),
 		Expires:        expires,
@@ -64,7 +68,7 @@ func (akSvc *ApiKeyService) ListKeys(orgId string) ([]*ApiKey, error) {
 		primitive.E{Key: "organizationid", Value: orgId},
 	}
 	cur, err := akSvc.collection.Find(ctx, filter)
-	defer cur.Close(ctx)
+	defer CloseCursor(ctx, cur)
 
 	if err != nil {
 		return nil, err
@@ -91,4 +95,15 @@ func (akSvc *ApiKeyService) GetKey(key string) *ApiKey {
 	apiKey := &ApiKey{}
 	result.Decode(apiKey)
 	return apiKey
+}
+
+func (akSvc *ApiKeyService) DeleteKey(apiId string) error {
+	ctx := context.Background()
+
+	filter := bson.M{"id": apiId}
+	result := akSvc.collection.FindOneAndDelete(ctx, filter)
+	if result.Err() != nil {
+		return result.Err()
+	}
+	return nil
 }

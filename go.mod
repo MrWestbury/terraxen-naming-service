@@ -3,6 +3,7 @@ module github.com/MrWestbury/terraxen-naming-service
 go 1.17
 
 require (
+	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/gin-gonic/gin v1.7.7
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.6.1

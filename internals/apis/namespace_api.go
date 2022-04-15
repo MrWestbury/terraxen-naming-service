@@ -45,17 +45,31 @@ func (nsApi *NamespaceApi) NotImplemented(c *gin.Context) {
 }
 
 func (nsApi *NamespaceApi) Resolve(c *gin.Context) {
-	nsId := c.Param("ns")
 	orgId := c.GetString("x-organization-id")
+
+	nsId := c.Param("ns")
 	resourceName := c.Param("resource")
 
 	ns, err := nsApi.nsSvc.GetNamespaceById(nsId)
 	if err != nil {
-		responseError(c, http.StatusInternalServerError, "failed to get namespace")
+		responseError(c, http.StatusInternalServerError, "Failed to get namespace")
 	}
 
 	org, err := nsApi.orgSvc.GetOrganizationById(orgId)
-	schemaVersion, err := nsApi.schemaSvc.GetSchemaVersionById(ns.SchemaId, ns.SchemaVersion)
+	if err != nil {
+		responseError(c, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	if org == nil {
+		responseError(c, http.StatusNotFound, "Organization not found")
+		return
+	}
+
+	schemaVersion, err := nsApi.schemaSvc.GetSchemaVersionById(orgId, ns.SchemaId, ns.SchemaVersion)
+	if err != nil {
+		responseError(c, http.StatusInternalServerError, "Something went wrong")
+	}
+
 	resource, found := schemaVersion.Resources[resourceName]
 	if !found {
 		responseError(c, http.StatusNotFound, "resource name not found")
