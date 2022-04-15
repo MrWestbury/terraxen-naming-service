@@ -27,6 +27,8 @@ func RegisterSchemaApi(parentGroup *gin.RouterGroup, svc *services.SchemaService
 	group.PUT("/:schema", schemaApi.UpdateSchema)
 	group.DELETE("/:schema", schemaApi.DeleteSchema)
 
+	group.GET("/:schema/versions", schemaApi.ListSchemaVersions)
+	group.POST("/:schema/versions", schemaApi.CreateSchemaVersion)
 	group.GET("/:schema/versions/:version", schemaApi.NotImplemented)
 	group.PUT("/:schema/versions/:version", schemaApi.NotImplemented)
 	group.DELETE("/:schema/versions/:version", schemaApi.NotImplemented)
@@ -134,6 +136,32 @@ func (sApi *SchemaApi) DeleteSchema(c *gin.Context) {
 		}
 		return
 	}
+}
+
+func (sApi *SchemaApi) ListSchemaVersions(c *gin.Context) {
+	orgId := c.GetString("x-organization-id")
+	schemaId := c.Param("schema")
+
+	versions, err := sApi.schemaSvc.ListSchemaVersions(orgId, schemaId)
+	if err != nil {
+		responseError(c, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	responseSingleItem(c, versions)
+}
+
+func (sApi *SchemaApi) CreateSchemaVersion(c *gin.Context) {
+	orgId := c.GetString("x-organization-id")
+	schemaId := c.Param("schema")
+
+	sv, err := sApi.schemaSvc.CreateSchemaVersion(orgId, schemaId)
+	if err != nil {
+		responseError(c, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	responseSingleItem(c, sv)
 }
 
 func (sApi *SchemaApi) NotImplemented(c *gin.Context) {

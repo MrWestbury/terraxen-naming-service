@@ -65,7 +65,7 @@ func (nsApi *NamespaceApi) Resolve(c *gin.Context) {
 		return
 	}
 
-	schemaVersion, err := nsApi.schemaSvc.GetSchemaVersionById(orgId, ns.SchemaId, ns.SchemaVersion)
+	schemaVersion, err := nsApi.schemaSvc.GetSchemaVersion(orgId, ns.SchemaId, ns.SchemaVersion)
 	if err != nil {
 		responseError(c, http.StatusInternalServerError, "Something went wrong")
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strconv"
 
 	"github.com/MrWestbury/terraxen-naming-service/internals/config"
 	"github.com/google/uuid"
@@ -81,26 +82,26 @@ func (sSvc *SchemaService) CreateSchema(orgId string, name string) (*Schema, err
 	return newSchema, nil
 }
 
-func (sSvc *SchemaService) GetSchemaVersionById(orgId string, schemaId string, schemaVersionId string) (*SchemaVersion, error) {
-	ctx := context.Background()
+// func (sSvc *SchemaService) GetSchemaVersionById(orgId string, schemaId string, schemaVersionId string) (*SchemaVersion, error) {
+// 	ctx := context.Background()
 
-	filter := bson.M{
-		"id":             schemaId,
-		"organizationid": orgId,
-		"schema_id":      schemaId,
-	}
+// 	filter := bson.M{
+// 		"id":             schemaId,
+// 		"organizationid": orgId,
+// 		"schema_id":      schemaId,
+// 	}
 
-	opts := options.FindOne()
-	opts.SetSort(bson.D{primitive.E{Key: "id", Value: 1}})
+// 	opts := options.FindOne()
+// 	opts.SetSort(bson.D{primitive.E{Key: "id", Value: 1}})
 
-	result := sSvc.collection.FindOne(ctx, filter)
-	if result.Err() == mongo.ErrNoDocuments {
-		return nil, nil
-	}
-	schemaVersion := &SchemaVersion{}
-	result.Decode(schemaVersion)
-	return schemaVersion, nil
-}
+// 	result := sSvc.collection.FindOne(ctx, filter)
+// 	if result.Err() == mongo.ErrNoDocuments {
+// 		return nil, nil
+// 	}
+// 	schemaVersion := &SchemaVersion{}
+// 	result.Decode(schemaVersion)
+// 	return schemaVersion, nil
+// }
 
 func (sSvc *SchemaService) getSchemaByName(orgId string, name string) (*Schema, error) {
 	ctx := context.Background()
@@ -229,4 +230,107 @@ func (sSvc *SchemaService) DeleteSchema(orgId string, schemaId string) error {
 	}
 
 	return nil
+}
+
+func (sSvc *SchemaService) ListSchemaVersions(orgId string, schemaId string) ([]*SchemaVersion, error) {
+
+	schema, err := sSvc.GetSchemaById(orgId, schemaId)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+
+	filter := bson.M{
+		"schema_id": schema.Id,
+	}
+
+	opts := options.Find()
+	opts.SetSort(bson.D{primitive.E{Key: "Id", Value: 1}})
+
+	cur, err := sSvc.collection.Find(ctx, filter, opts)
+	if err != nil {
+		log.Printf("Failed finding schema versions: %v", err)
+		return nil, err
+	}
+
+	var results []*SchemaVersion
+	for cur.Next(ctx) {
+		var sv SchemaVersion
+		err := cur.Decode(&sv)
+		if err != nil {
+			log.Printf("Failed to decode schema version: %v", err)
+			continue
+		}
+		results = append(results, &sv)
+	}
+
+	return results, nil
+}
+
+func (sSvc *SchemaService) CreateSchemaVersion(orgId string, schemaId string) (*SchemaVersion, error) {
+	latestVersion, err := sSvc.GetSchemaVersion(orgId, schemaId, "latest")
+	if err != nil {
+		log.Printf("Failed to get latest schema version: %v", err)
+		return nil, err
+	}
+
+	newVersion := latestVersion.Id + 1
+
+	newSchemaVersion := &SchemaVersion{
+		Id:        newVersion,
+		SchemaId:  schemaId,
+		Resources: latestVersion.Resources,
+	}
+
+	ctx := context.Background()
+
+	sSvc.collection.InsertOne(ctx, newSchemaVersion)
+	return newSchemaVersion, nil
+}
+
+func (sSvc *SchemaService) GetSchemaVersion(orgId string, schemaId string, schemaVersionId string) (*SchemaVersion, error) {
+
+	schema, err := sSvc.GetSchemaById(orgId, schemaId)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	var filter bson.M
+
+	if schemaVersionId == "latest" {
+		filter = bson.M{
+			"schemaid": schema.Id,
+		}
+	} else {
+		versionIdInt, err := strconv.Atoi(schemaVersionId)
+		if err != nil {
+			log.Printf("Invalid schema version string: %s : %v", schemaVersionId, err)
+			return nil, err
+		}
+
+		filter = bson.M{
+			"schemaid": schema.Id,
+			"id":       versionIdInt,
+		}
+	}
+
+	opts := options.FindOne()
+	opts.SetSort(bson.D{primitive.E{Key: "id", Value: -1}})
+
+	result := sSvc.versionCollection.FindOne(ctx, filter, opts)
+	if result.Err() != nil {
+		log.Printf("Failed to find schema version: %v", result.Err())
+		return nil, result.Err()
+	}
+
+	var sv *SchemaVersion
+	err = result.Decode(sv)
+	if err != nil {
+		log.Panicf("Failed to decode schema version: %v", err)
+		return nil, err
+	}
+
+	return sv, nil
 }
