@@ -9,12 +9,12 @@ import (
 )
 
 type NamespaceApi struct {
-	orgSvc    *services.OrganizationService
-	nsSvc     *services.NamespaceService
+	orgSvc    *services.OrganizationServiceInterface
+	nsSvc     *services.NamespaceServiceInterface
 	schemaSvc *services.SchemaService
 }
 
-func RegisterNamespaceApi(parentGroup *gin.RouterGroup, svc *services.NamespaceService, oSvc *services.OrganizationService, sSvc *services.SchemaService) {
+func RegisterNamespaceApi(parentGroup *gin.RouterGroup, svc *services.NamespaceServiceInterface, oSvc *services.OrganizationServiceInterface, sSvc *services.SchemaService) {
 	group := parentGroup.Group("/namespaces")
 	nsApi := &NamespaceApi{
 		nsSvc:     svc,
@@ -22,26 +22,28 @@ func RegisterNamespaceApi(parentGroup *gin.RouterGroup, svc *services.NamespaceS
 		schemaSvc: sSvc,
 	}
 
-	group.GET("/", nsApi.NotImplemented)
-	group.POST("/", nsApi.NotImplemented)
+	group.GET("/", NotImplemented)
+	group.POST("/", NotImplemented)
 
-	group.GET("/:ns", nsApi.NotImplemented)
-	group.PUT("/:ns", nsApi.NotImplemented)
-	group.DELETE("/:ns", nsApi.NotImplemented)
+	group.GET("/:ns", NotImplemented)
+	group.PUT("/:ns", NotImplemented)
+	group.DELETE("/:ns", NotImplemented)
 
-	group.GET("/:ns/variables", nsApi.NotImplemented)
-	group.POST("/:ns/variables", nsApi.NotImplemented)
-	group.GET("/:ns/variables/:var", nsApi.NotImplemented)
-	group.PUT("/:ns/variables/:var", nsApi.NotImplemented)
-	group.DELETE("/:ns/variables/:var", nsApi.NotImplemented)
+	group.GET("/:ns/variables", NotImplemented)
+	group.POST("/:ns/variables", NotImplemented)
+	group.GET("/:ns/variables/:var", NotImplemented)
+	group.PUT("/:ns/variables/:var", NotImplemented)
+	group.DELETE("/:ns/variables/:var", NotImplemented)
 
 	// Resolve a name
 	group.GET("/:ns/resolve/:resource", nsApi.Resolve)
 
 }
 
-func (nsApi *NamespaceApi) NotImplemented(c *gin.Context) {
-	responseError(c, http.StatusNotImplemented, "Not yet implemented")
+func (nsApi *NamespaceApi) ListNamespaces(c *gin.Context) {
+	orgId := c.GetString("x-organization-id")
+
+	nsList, err := nsApi.nsSvc.ListNamespaces(orgId)
 }
 
 func (nsApi *NamespaceApi) Resolve(c *gin.Context) {

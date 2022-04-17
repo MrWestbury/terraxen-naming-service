@@ -2,7 +2,6 @@ package apis
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/MrWestbury/terraxen-naming-service/internals/services"
@@ -22,18 +21,15 @@ func RegisterOrganizationApi(parentGroup *gin.RouterGroup, orgSvc *services.Orga
 	group.GET("/", orgApi.GetListOfOrganizations)
 	group.POST("/", orgApi.CreateOrganization)
 
-	group.GET("/:orgId", orgApi.GetOrganizationFromId)
+	group.GET("/:orgId", orgApi.GetOrganization)
 	group.PUT("/:orgId", orgApi.UpdateOrganization)
 	group.DELETE("/:orgId")
 }
 
 func (orgApi *OrganizationApi) CreateOrganization(c *gin.Context) {
-	orgRequest := NewOrganizationRequest{}
+	orgRequest := &NewOrganizationRequest{}
 
-	decoder := json.NewDecoder(c.Request.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&orgRequest); err != nil {
-		responseError(c, http.StatusBadRequest, "Unable to process request body")
+	if err := DecodeBody(c, orgRequest); err != nil {
 		return
 	}
 
@@ -56,10 +52,14 @@ func (orgApi *OrganizationApi) GetListOfOrganizations(c *gin.Context) {
 
 }
 
-func (orgApi *OrganizationApi) GetOrganizationFromId(c *gin.Context) {
-	orgId := c.Param("orgId")
-	test := c.GetString("x-organization-id")
-	log.Printf("Got context: %s\n", test)
+func (orgApi *OrganizationApi) GetOrganization(c *gin.Context) {
+	orgUrlId := c.Param("orgId")
+	orgId := c.GetString("x-organization-id")
+
+	if orgUrlId != orgId {
+		responseError(c, http.StatusInternalServerError, "Organization ID mismatch")
+		return
+	}
 
 	org, err := orgApi.orgSvc.GetOrganizationById(orgId)
 	if err != nil {
@@ -76,5 +76,46 @@ func (orgApi *OrganizationApi) GetOrganizationFromId(c *gin.Context) {
 }
 
 func (orgApi *OrganizationApi) UpdateOrganization(c *gin.Context) {
+	orgUrlId := c.Param("orgId")
+	orgId := c.GetString("x-organization-id")
 
+	if orgUrlId != orgId {
+		responseError(c, http.StatusInternalServerError, "Organization ID mismatch")
+		return
+	}
+
+	org, err := orgApi.orgSvc.GetOrganizationById(orgId)
+	if err != nil {
+		responseError(c, http.StatusInternalServerError, "Something went wrong our end")
+		return
+	}
+
+	if org == nil {
+		responseError(c, http.StatusNotFound, "No organization with that ID found")
+		return
+	}
+
+	var updateReq UpdateOrganizationRequest
+	decoder := json.NewDecoder(c.Request.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&updateReq); err != nil {
+		responseError(c, http.StatusBadRequest, "Unable to process request body")
+		return
+	}
+
+	orgApi.orgSvc.UpdateOrganization(orgId, updateReq.Name, updateReq.Variables)
+
+	responseSingleItem(c, org)
+}
+
+func (orgApi *OrganizationApi) DeleteOrganization(c *gin.Context) {
+	orgUrlId := c.Param("orgId")
+	orgId := c.GetString("x-organization-id")
+
+	if orgUrlId != orgId {
+		responseError(c, http.StatusInternalServerError, "Organization ID mismatch")
+		return
+	}
+
+	orgApi.orgSvc.DeleteOrganization(orgId)
 }

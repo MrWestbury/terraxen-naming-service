@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/MrWestbury/terraxen-naming-service/internals/config"
 	"github.com/google/uuid"
@@ -14,6 +15,15 @@ type Organization struct {
 	Id      string            `json:"id"`
 	Name    string            `json:"name"`
 	OrgVars map[string]string `json:"vars"`
+}
+
+type OrganizationServiceInterface interface {
+	NewOrganization(organizationName string) (*Organization, error)
+	GetOrganizationById(orgId string) (*Organization, error)
+	ExistsById(orgId string) bool
+	ExistsByName(orgName string) bool
+	UpdateOrganization(orgId string, orgName string, orgVars map[string]string) (*Organization, error)
+	DeleteOrganization(organizationId string) error
 }
 
 type OrganizationService struct {
@@ -84,4 +94,48 @@ func (orgsvc *OrganizationService) ExistsByName(orgName string) bool {
 	ctx := context.Background()
 	result := orgsvc.collection.FindOne(ctx, bson.M{"name": orgName})
 	return result.Err() != mongo.ErrNoDocuments
+}
+
+func (orgSvc *OrganizationService) UpdateOrganization(orgId string, orgName string, orgVars map[string]string) (*Organization, error) {
+	org, err := orgSvc.GetOrganizationById(orgId)
+	if err != nil {
+		log.Printf("Failed to update organization: %v", err)
+		return nil, err
+	}
+
+	org.Name = orgName
+	org.OrgVars = orgVars
+
+	ctx := context.Background()
+
+	filter := bson.M{
+		"id": org.Id,
+	}
+
+	orgSvc.collection.FindOneAndUpdate(ctx, filter, org)
+	return org, nil
+}
+
+func (orgSvc OrganizationService) DeleteOrganization(organizationId string) error {
+	org, err := orgSvc.GetOrganizationById(organizationId)
+	if err != nil {
+		log.Printf("Failed to update organization: %v", err)
+		return err
+	}
+
+	ctx := context.Background()
+
+	filter := bson.M{
+		"id": org.Id,
+	}
+
+	result, err := orgSvc.collection.DeleteOne(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return errors.New("no organization deleted")
+	}
+	return nil
 }

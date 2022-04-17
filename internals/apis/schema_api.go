@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/MrWestbury/terraxen-naming-service/internals/engine"
 	"github.com/MrWestbury/terraxen-naming-service/internals/services"
 	"github.com/gin-gonic/gin"
 )
@@ -29,9 +30,9 @@ func RegisterSchemaApi(parentGroup *gin.RouterGroup, svc *services.SchemaService
 
 	group.GET("/:schema/versions", schemaApi.ListSchemaVersions)
 	group.POST("/:schema/versions", schemaApi.CreateSchemaVersion)
-	group.GET("/:schema/versions/:version", schemaApi.NotImplemented)
-	group.PUT("/:schema/versions/:version", schemaApi.NotImplemented)
-	group.DELETE("/:schema/versions/:version", schemaApi.NotImplemented)
+	group.GET("/:schema/versions/:version", schemaApi.GetSchemaVersion)
+	group.PUT("/:schema/versions/:version", schemaApi.UpdateSchemaVersion)
+	group.DELETE("/:schema/versions/:version", schemaApi.DeleteSchemaVersion)
 
 	// Resolve a resource
 	group.POST("/:schema/versions/:version/resolve", schemaApi.ResolveResourceName)
@@ -164,10 +165,65 @@ func (sApi *SchemaApi) CreateSchemaVersion(c *gin.Context) {
 	responseSingleItem(c, sv)
 }
 
-func (sApi *SchemaApi) NotImplemented(c *gin.Context) {
-	responseError(c, http.StatusNotImplemented, "Not yet implemented")
+func (sApi *SchemaApi) GetSchemaVersion(c *gin.Context) {
+	orgId := c.GetString("x-organization-id")
+	schemaId := c.Param("schema")
+	schemaVersionId := c.Param("version")
+
+	sv, err := sApi.schemaSvc.GetSchemaVersion(orgId, schemaId, schemaVersionId)
+	if err != nil {
+		responseError(c, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	responseSingleItem(c, sv)
+}
+
+func (sApi *SchemaApi) UpdateSchemaVersion(c *gin.Context) {
+	// TODO: How do we decide if to update or create new
+	// Breaking changes should create a new version
+}
+
+func (sApi *SchemaApi) DeleteSchemaVersion(c *gin.Context) {
+	// TODO: If we delete, do we actually delete, or just disable?
 }
 
 func (sApi *SchemaApi) ResolveResourceName(c *gin.Context) {
+	orgId := c.GetString("x-organization-id")
+	schemaId := c.Param("schema")
+	schemaVersionId := c.Param("version")
 
+	var resolveReq ResolveSchemaVersionRequest
+	decoder := json.NewDecoder(c.Request.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&resolveReq); err != nil {
+		responseError(c, http.StatusBadRequest, "Unable to process request")
+		return
+	}
+
+	sv, err := sApi.schemaSvc.GetSchemaVersion(orgId, schemaId, schemaVersionId)
+	if err != nil {
+		responseError(c, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	res, found := sv.Resources[resolveReq.ResouceName]
+	if !found {
+		responseError(c, http.StatusNotFound, "Resource name not found in schema")
+		return
+	}
+
+	result, err := engine.ResolvePattern(res.Pattern, resolveReq.Varibales)
+	if err != nil {
+		responseError(c, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+
+	response := ResolveResourceResponse{
+		ResourceName: res.Name,
+		Pattern:      res.Pattern,
+		Value:        result,
+	}
+
+	responseSingleItem(c, response)
 }
