@@ -17,6 +17,13 @@ type Organization struct {
 	OrgVars map[string]string `json:"vars"`
 }
 
+type OrganizationVar struct {
+	Id    string `json:"id"`
+	OrgId string `json:"orgid"`
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
 type OrganizationServiceInterface interface {
 	NewOrganization(organizationName string) (*Organization, error)
 	GetOrganizationById(orgId string) (*Organization, error)
@@ -28,13 +35,14 @@ type OrganizationServiceInterface interface {
 
 type OrganizationService struct {
 	BaseService
+	varCollection *mongo.Collection
 }
 
 func NewOrganizationService(cfg *config.Config) *OrganizationService {
 	orgsvc := &OrganizationService{}
 	orgsvc.Connect(cfg)
 	orgsvc.collection = orgsvc.client.Collection("organizations")
-
+	orgsvc.varCollection = orgsvc.client.Collection("orgvars")
 	return orgsvc
 }
 

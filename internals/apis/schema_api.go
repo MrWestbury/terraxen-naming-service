@@ -39,7 +39,7 @@ func RegisterSchemaApi(parentGroup *gin.RouterGroup, svc *services.SchemaService
 }
 
 func (sApi *SchemaApi) ListSchemas(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	if orgId == "" {
 		responseError(c, http.StatusForbidden, "Valid API key for an organization required")
 		return
@@ -47,6 +47,11 @@ func (sApi *SchemaApi) ListSchemas(c *gin.Context) {
 
 	schemaList, err := sApi.schemaSvc.ListSchemaInOrganization(orgId)
 	if err != nil {
+		if err == services.ErrSchemaNotFound {
+			responseError(c, http.StatusNotFound, "Schema not found")
+			return
+		}
+
 		responseError(c, http.StatusInternalServerError, "Something went wrong getting schemas")
 		return
 	}
@@ -56,7 +61,7 @@ func (sApi *SchemaApi) ListSchemas(c *gin.Context) {
 
 // Create a new schema and a new version 1 for that schema
 func (sApi *SchemaApi) CreateSchema(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	if orgId == "" {
 		responseError(c, http.StatusForbidden, "Valid API key for an organization required")
 		return
@@ -73,6 +78,7 @@ func (sApi *SchemaApi) CreateSchema(c *gin.Context) {
 	schema, err := sApi.schemaSvc.CreateSchema(orgId, schemaReq.Name)
 	if err.Error() == "schema already exists" {
 		responseError(c, http.StatusConflict, "Schema name already exists in organization")
+		return
 	} else if err != nil {
 		log.Printf("failed to create schema: %v", err)
 		responseError(c, http.StatusInternalServerError, "Failed to create schema")
@@ -83,7 +89,7 @@ func (sApi *SchemaApi) CreateSchema(c *gin.Context) {
 }
 
 func (sApi *SchemaApi) GetSchema(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
 	schema, err := sApi.schemaSvc.GetSchemaById(orgId, schemaId)
@@ -96,7 +102,7 @@ func (sApi *SchemaApi) GetSchema(c *gin.Context) {
 }
 
 func (sApi *SchemaApi) UpdateSchema(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
 	var schemaReq UpdateSchemaRequest
@@ -124,7 +130,7 @@ func (sApi *SchemaApi) UpdateSchema(c *gin.Context) {
 }
 
 func (sApi *SchemaApi) DeleteSchema(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
 	err := sApi.schemaSvc.DeleteSchema(orgId, schemaId)
@@ -140,11 +146,15 @@ func (sApi *SchemaApi) DeleteSchema(c *gin.Context) {
 }
 
 func (sApi *SchemaApi) ListSchemaVersions(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
 	versions, err := sApi.schemaSvc.ListSchemaVersions(orgId, schemaId)
 	if err != nil {
+		if err == services.ErrSchemaNotFound {
+			responseError(c, http.StatusNotFound, "Schema not found")
+			return
+		}
 		responseError(c, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
@@ -153,7 +163,7 @@ func (sApi *SchemaApi) ListSchemaVersions(c *gin.Context) {
 }
 
 func (sApi *SchemaApi) CreateSchemaVersion(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
 	sv, err := sApi.schemaSvc.CreateSchemaVersion(orgId, schemaId)
@@ -166,7 +176,7 @@ func (sApi *SchemaApi) CreateSchemaVersion(c *gin.Context) {
 }
 
 func (sApi *SchemaApi) GetSchemaVersion(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 	schemaVersionId := c.Param("version")
 
@@ -189,7 +199,7 @@ func (sApi *SchemaApi) DeleteSchemaVersion(c *gin.Context) {
 }
 
 func (sApi *SchemaApi) ResolveResourceName(c *gin.Context) {
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 	schemaVersionId := c.Param("version")
 

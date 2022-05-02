@@ -2,6 +2,7 @@ package apis
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -16,7 +17,8 @@ type ListMeta struct {
 func DecodeBody(c *gin.Context, result interface{}) error {
 	decoder := json.NewDecoder(c.Request.Body)
 	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(result); err != nil {
+	if err := decoder.Decode(&result); err != nil {
+		log.Printf("failed to decode body: %v", err)
 		responseError(c, http.StatusBadRequest, "Unable to process request body")
 		return err
 	}

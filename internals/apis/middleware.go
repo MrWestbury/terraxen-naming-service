@@ -11,6 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	ORG_CONTEXT_NAME = "x-organization-id"
+)
+
 type TerraxenClaims struct {
 	jwt.StandardClaims
 	OrganizationId string
@@ -37,7 +41,7 @@ func (m *Middlewares) ValidateRequest(c *gin.Context) {
 			responseError(c, http.StatusForbidden, "Api key rejected")
 			return
 		}
-		c.Set("x-organization-id", ak.OrganizationId)
+		c.Set(ORG_CONTEXT_NAME, ak.OrganizationId)
 		c.Next()
 		return
 	}
@@ -48,7 +52,7 @@ func (m *Middlewares) ValidateRequest(c *gin.Context) {
 		m.validateJWT(parts[1], []byte("terraxen"))
 	}
 
-	c.Set("x-organization-id", "")
+	c.Set(ORG_CONTEXT_NAME, "")
 	c.Next()
 }
 

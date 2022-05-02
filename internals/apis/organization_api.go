@@ -27,9 +27,9 @@ func RegisterOrganizationApi(parentGroup *gin.RouterGroup, orgSvc *services.Orga
 }
 
 func (orgApi *OrganizationApi) CreateOrganization(c *gin.Context) {
-	orgRequest := &NewOrganizationRequest{}
+	orgRequest := NewOrganizationRequest{}
 
-	if err := DecodeBody(c, orgRequest); err != nil {
+	if err := DecodeBody(c, &orgRequest); err != nil {
 		return
 	}
 
@@ -54,7 +54,7 @@ func (orgApi *OrganizationApi) GetListOfOrganizations(c *gin.Context) {
 
 func (orgApi *OrganizationApi) GetOrganization(c *gin.Context) {
 	orgUrlId := c.Param("orgId")
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 
 	if orgUrlId != orgId {
 		responseError(c, http.StatusInternalServerError, "Organization ID mismatch")
@@ -77,7 +77,7 @@ func (orgApi *OrganizationApi) GetOrganization(c *gin.Context) {
 
 func (orgApi *OrganizationApi) UpdateOrganization(c *gin.Context) {
 	orgUrlId := c.Param("orgId")
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 
 	if orgUrlId != orgId {
 		responseError(c, http.StatusInternalServerError, "Organization ID mismatch")
@@ -110,7 +110,7 @@ func (orgApi *OrganizationApi) UpdateOrganization(c *gin.Context) {
 
 func (orgApi *OrganizationApi) DeleteOrganization(c *gin.Context) {
 	orgUrlId := c.Param("orgId")
-	orgId := c.GetString("x-organization-id")
+	orgId := c.GetString(ORG_CONTEXT_NAME)
 
 	if orgUrlId != orgId {
 		responseError(c, http.StatusInternalServerError, "Organization ID mismatch")

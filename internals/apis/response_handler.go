@@ -27,3 +27,7 @@ func responseSingleItemStatus(c *gin.Context, statusCode int, item interface{}) 
 
 	c.IndentedJSON(statusCode, body)
 }
+
+func responseNoContent(c *gin.Context, statusCode int) {
+	c.Status(statusCode)
+}

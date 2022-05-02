@@ -14,6 +14,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var (
+	ErrSchemaNotFound = errors.New("schema not found")
+)
+
 type Schema struct {
 	Id             string
 	OrganizationId string
@@ -82,27 +86,6 @@ func (sSvc *SchemaService) CreateSchema(orgId string, name string) (*Schema, err
 	return newSchema, nil
 }
 
-// func (sSvc *SchemaService) GetSchemaVersionById(orgId string, schemaId string, schemaVersionId string) (*SchemaVersion, error) {
-// 	ctx := context.Background()
-
-// 	filter := bson.M{
-// 		"id":             schemaId,
-// 		"organizationid": orgId,
-// 		"schema_id":      schemaId,
-// 	}
-
-// 	opts := options.FindOne()
-// 	opts.SetSort(bson.D{primitive.E{Key: "id", Value: 1}})
-
-// 	result := sSvc.collection.FindOne(ctx, filter)
-// 	if result.Err() == mongo.ErrNoDocuments {
-// 		return nil, nil
-// 	}
-// 	schemaVersion := &SchemaVersion{}
-// 	result.Decode(schemaVersion)
-// 	return schemaVersion, nil
-// }
-
 func (sSvc *SchemaService) getSchemaByName(orgId string, name string) (*Schema, error) {
 	ctx := context.Background()
 	filter := bson.M{
@@ -127,6 +110,7 @@ func (sSvc *SchemaService) getSchemaByName(orgId string, name string) (*Schema, 
 	return sch, nil
 }
 
+// List schemas in a given organization by the organization ID
 func (sSvc *SchemaService) ListSchemaInOrganization(orgId string) ([]*Schema, error) {
 	ctx := context.Background()
 	filter := bson.M{
@@ -163,26 +147,25 @@ func (sSvc *SchemaService) GetSchemaById(orgId string, schemaId string) (*Schema
 
 	filter := bson.M{
 		"organizationid": orgId,
-		"schema_id":      schemaId,
+		"id":             schemaId,
 	}
 
 	result := sSvc.collection.FindOne(ctx, filter)
 	if result.Err() == mongo.ErrNoDocuments {
 		return nil, nil
 	} else if result.Err() != nil {
-		log.Printf("Failed to get schema by name: %v", result.Err())
+		log.Printf("Failed to get schema by id: %v", result.Err())
 		return nil, result.Err()
 	}
 
-	var sch *Schema
-	err := result.Decode(sch)
+	var sch Schema
+	err := result.Decode(&sch)
 	if err != nil {
-		log.Printf("Failed to get schema by name: %v", err)
+		log.Printf("Failed to get schema by id: %v", err)
 		return nil, err
 	}
 
-	return sch, nil
-
+	return &sch, nil
 }
 
 func (sSvc *SchemaService) UpdateSchema(schema Schema) error {
@@ -190,7 +173,7 @@ func (sSvc *SchemaService) UpdateSchema(schema Schema) error {
 
 	filter := bson.M{
 		"organizationid": schema.OrganizationId,
-		"schema_id":      schema.Id,
+		"id":             schema.Id,
 	}
 
 	results := sSvc.collection.FindOneAndReplace(ctx, filter, schema)
@@ -206,7 +189,7 @@ func (sSvc *SchemaService) DeleteSchema(orgId string, schemaId string) error {
 
 	filter := bson.M{
 		"organizationid": orgId,
-		"schema_id":      schemaId,
+		"id":             schemaId,
 	}
 
 	result, err := sSvc.collection.DeleteOne(ctx, filter)
@@ -220,7 +203,7 @@ func (sSvc *SchemaService) DeleteSchema(orgId string, schemaId string) error {
 	}
 
 	versionFilter := bson.M{
-		"schema_id": schemaId,
+		"schemaid": schemaId,
 	}
 
 	_, err = sSvc.versionCollection.DeleteMany(ctx, versionFilter)
@@ -233,27 +216,31 @@ func (sSvc *SchemaService) DeleteSchema(orgId string, schemaId string) error {
 }
 
 func (sSvc *SchemaService) ListSchemaVersions(orgId string, schemaId string) ([]*SchemaVersion, error) {
-
 	schema, err := sSvc.GetSchemaById(orgId, schemaId)
 	if err != nil {
+		log.Printf("failed to get schema while listing versions: %v", err)
 		return nil, err
+	}
+
+	if schema == nil {
+		return nil, ErrSchemaNotFound
 	}
 
 	ctx := context.Background()
 
 	filter := bson.M{
-		"schema_id": schema.Id,
+		"schemaid": schema.Id,
 	}
 
 	opts := options.Find()
-	opts.SetSort(bson.D{primitive.E{Key: "Id", Value: 1}})
+	opts.SetSort(bson.D{primitive.E{Key: "id", Value: 1}})
 
-	cur, err := sSvc.collection.Find(ctx, filter, opts)
+	cur, err := sSvc.versionCollection.Find(ctx, filter, opts)
 	if err != nil {
 		log.Printf("Failed finding schema versions: %v", err)
 		return nil, err
 	}
-
+	defer CloseCursor(ctx, cur)
 	var results []*SchemaVersion
 	for cur.Next(ctx) {
 		var sv SchemaVersion
