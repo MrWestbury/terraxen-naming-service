@@ -8,39 +8,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type NamespaceApi struct {
+type NamespaceHandler struct {
 	orgSvc    services.OrganizationServiceProvider
 	nsSvc     services.NamespaceServiceProvider
 	schemaSvc services.SchemaServiceProvider
 }
 
-func RegisterNamespaceApi(parentGroup *gin.RouterGroup, svc services.NamespaceServiceProvider, oSvc services.OrganizationServiceProvider, sSvc services.SchemaServiceProvider) {
-	group := parentGroup.Group("/namespaces")
-	nsApi := &NamespaceApi{
+func NewNamespaceHandler(svc services.NamespaceServiceProvider, oSvc services.OrganizationServiceProvider, sSvc services.SchemaServiceProvider) *NamespaceHandler {
+	nsApi := &NamespaceHandler{
 		nsSvc:     svc,
 		orgSvc:    oSvc,
 		schemaSvc: sSvc,
 	}
 
-	group.GET("/", nsApi.ListNamespaces)
-	group.POST("/", nsApi.CreateNamespace)
-
-	group.GET("/:ns", nsApi.GetNamespace)
-	group.PUT("/:ns", nsApi.UpdateNamespace)
-	group.DELETE("/:ns", nsApi.DeleteNamespace)
-
-	group.GET("/:ns/variables", nsApi.ListNamespaceVariables)
-	group.POST("/:ns/variables", nsApi.PostNamespaceVariable)
-	group.GET("/:ns/variables/:var", nsApi.GetNamespaceVariable)
-	group.PUT("/:ns/variables/:var", nsApi.PutNamespaceVariable)
-	group.DELETE("/:ns/variables/:var", nsApi.DeleteNamespaceVariable)
-
-	// Resolve a name
-	group.GET("/:ns/resolve/:resource", nsApi.Resolve)
-
+	return nsApi
 }
 
-func (nsApi *NamespaceApi) ListNamespaces(c *gin.Context) {
+func (nsApi *NamespaceHandler) ListNamespaces(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 
 	nsList, err := nsApi.nsSvc.ListNamespaces(orgId)
@@ -52,7 +36,7 @@ func (nsApi *NamespaceApi) ListNamespaces(c *gin.Context) {
 	responseSingleItem(c, nsList)
 }
 
-func (nsApi *NamespaceApi) CreateNamespace(c *gin.Context) {
+func (nsApi *NamespaceHandler) CreateNamespace(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	var nsRequest NewNamespaceRequest
 
@@ -75,7 +59,7 @@ func (nsApi *NamespaceApi) CreateNamespace(c *gin.Context) {
 	responseSingleItem(c, ns)
 }
 
-func (nsApi *NamespaceApi) GetNamespace(c *gin.Context) {
+func (nsApi *NamespaceHandler) GetNamespace(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	nsId := c.Param("ns")
 
@@ -88,7 +72,7 @@ func (nsApi *NamespaceApi) GetNamespace(c *gin.Context) {
 	responseSingleItem(c, ns)
 }
 
-func (nsApi *NamespaceApi) Resolve(c *gin.Context) {
+func (nsApi *NamespaceHandler) Resolve(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 
 	nsId := c.Param("ns")
@@ -157,7 +141,7 @@ func (nsApi *NamespaceApi) Resolve(c *gin.Context) {
 	responseSingleItem(c, item)
 }
 
-func (nsApi *NamespaceApi) UpdateNamespace(c *gin.Context) {
+func (nsApi *NamespaceHandler) UpdateNamespace(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	nsId := c.Param("ns")
 
@@ -180,7 +164,7 @@ func (nsApi *NamespaceApi) UpdateNamespace(c *gin.Context) {
 	nsApi.nsSvc.UpdateNamespace(orgId, nsId, updateBody.Name, updateBody.SchemaVersion)
 }
 
-func (nsApi *NamespaceApi) DeleteNamespace(c *gin.Context) {
+func (nsApi *NamespaceHandler) DeleteNamespace(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	nsId := c.Param("ns")
 
@@ -197,7 +181,7 @@ func (nsApi *NamespaceApi) DeleteNamespace(c *gin.Context) {
 	responseNoContent(c, http.StatusNoContent)
 }
 
-func (nsApi *NamespaceApi) ListNamespaceVariables(c *gin.Context) {
+func (nsApi *NamespaceHandler) ListNamespaceVariables(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	nsId := c.Param("ns")
 
@@ -211,7 +195,7 @@ func (nsApi *NamespaceApi) ListNamespaceVariables(c *gin.Context) {
 	responseSingleItem(c, ns)
 }
 
-func (nsApi *NamespaceApi) PostNamespaceVariable(c *gin.Context) {
+func (nsApi *NamespaceHandler) PostNamespaceVariable(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	nsId := c.Param("ns")
 
@@ -243,7 +227,7 @@ func (nsApi *NamespaceApi) PostNamespaceVariable(c *gin.Context) {
 	responseSingleItem(c, nsVar)
 }
 
-func (nsApi *NamespaceApi) GetNamespaceVariable(c *gin.Context) {
+func (nsApi *NamespaceHandler) GetNamespaceVariable(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	nsId := c.Param("ns")
 	varId := c.Param("var")
@@ -262,7 +246,7 @@ func (nsApi *NamespaceApi) GetNamespaceVariable(c *gin.Context) {
 	responseSingleItem(c, nsVar)
 }
 
-func (nsApi *NamespaceApi) PutNamespaceVariable(c *gin.Context) {
+func (nsApi *NamespaceHandler) PutNamespaceVariable(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	nsId := c.Param("ns")
 	varId := c.Param("var")
@@ -283,7 +267,7 @@ func (nsApi *NamespaceApi) PutNamespaceVariable(c *gin.Context) {
 	responseSingleItem(c, nsVar)
 }
 
-func (nsApi *NamespaceApi) DeleteNamespaceVariable(c *gin.Context) {
+func (nsApi *NamespaceHandler) DeleteNamespaceVariable(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	nsId := c.Param("ns")
 	varId := c.Param("var")

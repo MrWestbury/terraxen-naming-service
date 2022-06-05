@@ -8,25 +8,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type OrganizationApi struct {
+type OrganizationHandler struct {
 	orgSvc services.OrganizationServiceProvider
 }
 
-func RegisterOrganizationApi(parentGroup *gin.RouterGroup, orgSvc services.OrganizationServiceProvider) {
-	group := parentGroup.Group("/organizations")
-	orgApi := &OrganizationApi{
+func NewOrganizationHandler(orgSvc services.OrganizationServiceProvider) *OrganizationHandler {
+	orgHandler := &OrganizationHandler{
 		orgSvc: orgSvc,
 	}
-
-	group.GET("/", orgApi.GetListOfOrganizations)
-	group.POST("/", orgApi.CreateOrganization)
-
-	group.GET("/:orgId", orgApi.GetOrganization)
-	group.PUT("/:orgId", orgApi.UpdateOrganization)
-	group.DELETE("/:orgId")
+	return orgHandler
 }
 
-func (orgApi *OrganizationApi) CreateOrganization(c *gin.Context) {
+func (orgApi *OrganizationHandler) CreateOrganization(c *gin.Context) {
 	orgRequest := NewOrganizationRequest{}
 
 	if err := DecodeBody(c, &orgRequest); err != nil {
@@ -48,11 +41,11 @@ func (orgApi *OrganizationApi) CreateOrganization(c *gin.Context) {
 	responseSingleItemStatus(c, http.StatusCreated, newOrg)
 }
 
-func (orgApi *OrganizationApi) GetListOfOrganizations(c *gin.Context) {
+func (orgApi *OrganizationHandler) GetListOfOrganizations(c *gin.Context) {
 
 }
 
-func (orgApi *OrganizationApi) GetOrganization(c *gin.Context) {
+func (orgApi *OrganizationHandler) GetOrganization(c *gin.Context) {
 	orgUrlId := c.Param("orgId")
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 
@@ -75,7 +68,7 @@ func (orgApi *OrganizationApi) GetOrganization(c *gin.Context) {
 	responseSingleItem(c, org)
 }
 
-func (orgApi *OrganizationApi) UpdateOrganization(c *gin.Context) {
+func (orgApi *OrganizationHandler) UpdateOrganization(c *gin.Context) {
 	orgUrlId := c.Param("orgId")
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 
@@ -108,7 +101,7 @@ func (orgApi *OrganizationApi) UpdateOrganization(c *gin.Context) {
 	responseSingleItem(c, org)
 }
 
-func (orgApi *OrganizationApi) DeleteOrganization(c *gin.Context) {
+func (orgApi *OrganizationHandler) DeleteOrganization(c *gin.Context) {
 	orgUrlId := c.Param("orgId")
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 

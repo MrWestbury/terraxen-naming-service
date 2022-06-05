@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (sApi *SchemaApi) ListSchemaVersions(c *gin.Context) {
+func (sApi *SchemaApiHandler) ListSchemaVersions(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
@@ -27,7 +27,7 @@ func (sApi *SchemaApi) ListSchemaVersions(c *gin.Context) {
 	responseSingleItem(c, versions)
 }
 
-func (sApi *SchemaApi) CreateSchemaVersion(c *gin.Context) {
+func (sApi *SchemaApiHandler) CreateSchemaVersion(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
@@ -68,7 +68,7 @@ func (sApi *SchemaApi) CreateSchemaVersion(c *gin.Context) {
 	responseSingleItem(c, sv)
 }
 
-func (sApi *SchemaApi) GetSchemaVersion(c *gin.Context) {
+func (sApi *SchemaApiHandler) GetSchemaVersion(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 	schemaVersionId := c.Param("version")
@@ -82,7 +82,7 @@ func (sApi *SchemaApi) GetSchemaVersion(c *gin.Context) {
 	responseSingleItem(c, sv)
 }
 
-func (sApi *SchemaApi) UpdateSchemaVersion(c *gin.Context) {
+func (sApi *SchemaApiHandler) UpdateSchemaVersion(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 	schemaVersion := c.Param("version")
@@ -113,11 +113,11 @@ func (sApi *SchemaApi) UpdateSchemaVersion(c *gin.Context) {
 	responseSingleItem(c, updatedVer)
 }
 
-func (sApi *SchemaApi) DeleteSchemaVersion(c *gin.Context) {
+func (sApi *SchemaApiHandler) DeleteSchemaVersion(c *gin.Context) {
 	// TODO: If we delete, do we actually delete, or just disable?
 }
 
-func (sApi *SchemaApi) ResolveResourceName(c *gin.Context) {
+func (sApi *SchemaApiHandler) ResolveResourceName(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 	schemaVersionId := c.Param("version")

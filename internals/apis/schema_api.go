@@ -9,35 +9,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type SchemaApi struct {
+type SchemaApiHandler struct {
 	schemaSvc services.SchemaServiceProvider
 }
 
-func RegisterSchemaApi(parentGroup *gin.RouterGroup, svc services.SchemaServiceProvider) {
-	group := parentGroup.Group("/schemas")
-
-	schemaApi := &SchemaApi{
+func NewSchemaApiHandler(svc services.SchemaServiceProvider) *SchemaApiHandler {
+	schemaApi := &SchemaApiHandler{
 		schemaSvc: svc,
 	}
 
-	group.GET("/", schemaApi.ListSchemas)
-	group.POST("/", schemaApi.CreateSchema)
-
-	group.GET("/:schema", schemaApi.GetSchema) // Schema details
-	group.PUT("/:schema", schemaApi.UpdateSchema)
-	group.DELETE("/:schema", schemaApi.DeleteSchema)
-
-	group.GET("/:schema/versions", schemaApi.ListSchemaVersions)
-	group.POST("/:schema/versions", schemaApi.CreateSchemaVersion)
-	group.GET("/:schema/versions/:version", schemaApi.GetSchemaVersion)
-	group.PUT("/:schema/versions/:version", schemaApi.UpdateSchemaVersion)
-	group.DELETE("/:schema/versions/:version", schemaApi.DeleteSchemaVersion)
-
-	// Resolve a resource
-	group.POST("/:schema/versions/:version/resolve", schemaApi.ResolveResourceName)
+	return schemaApi
 }
 
-func (sApi *SchemaApi) ListSchemas(c *gin.Context) {
+func (sApi *SchemaApiHandler) ListSchemas(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	if orgId == "" {
 		responseError(c, http.StatusForbidden, "Valid API key for an organization required")
@@ -59,7 +43,7 @@ func (sApi *SchemaApi) ListSchemas(c *gin.Context) {
 }
 
 // Create a new schema and a new version 1 for that schema
-func (sApi *SchemaApi) CreateSchema(c *gin.Context) {
+func (sApi *SchemaApiHandler) CreateSchema(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	if orgId == "" {
 		responseError(c, http.StatusForbidden, "Valid API key for an organization required")
@@ -89,7 +73,7 @@ func (sApi *SchemaApi) CreateSchema(c *gin.Context) {
 	responseSingleItem(c, schema)
 }
 
-func (sApi *SchemaApi) GetSchema(c *gin.Context) {
+func (sApi *SchemaApiHandler) GetSchema(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
@@ -102,7 +86,7 @@ func (sApi *SchemaApi) GetSchema(c *gin.Context) {
 	responseSingleItem(c, schema)
 }
 
-func (sApi *SchemaApi) UpdateSchema(c *gin.Context) {
+func (sApi *SchemaApiHandler) UpdateSchema(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 
@@ -130,7 +114,7 @@ func (sApi *SchemaApi) UpdateSchema(c *gin.Context) {
 	responseSingleItem(c, schema)
 }
 
-func (sApi *SchemaApi) DeleteSchema(c *gin.Context) {
+func (sApi *SchemaApiHandler) DeleteSchema(c *gin.Context) {
 	orgId := c.GetString(ORG_CONTEXT_NAME)
 	schemaId := c.Param("schema")
 

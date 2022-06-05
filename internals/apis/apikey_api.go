@@ -7,24 +7,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type ApiKeyApi struct {
+type ApiKeyHandler struct {
 	akSvc services.ApiKeyProvider
 }
 
-func RegisterApiKeyApi(parentGroup *gin.RouterGroup, apiKeySvc services.ApiKeyProvider) {
-	group := parentGroup.Group("/apikeys")
-	akApi := &ApiKeyApi{
+func NewApiKeyHandler(apiKeySvc services.ApiKeyProvider) *ApiKeyHandler {
+	akApi := &ApiKeyHandler{
 		akSvc: apiKeySvc,
 	}
 
-	group.GET("/", akApi.ListApiKeys)
-	group.POST("/", akApi.CreateKey)
-
-	group.GET("/:apiId")
-	group.DELETE("/:apiId", akApi.DeleteKey)
+	return akApi
 }
 
-func (aka *ApiKeyApi) ListApiKeys(c *gin.Context) {
+func (aka *ApiKeyHandler) ListApiKeys(c *gin.Context) {
 	orgId := c.GetString("x-organization-id")
 	if orgId == "" {
 		responseError(c, http.StatusForbidden, "Valid API key for an organization required")
@@ -38,7 +33,7 @@ func (aka *ApiKeyApi) ListApiKeys(c *gin.Context) {
 	responseSingleItem(c, keys)
 }
 
-func (aka *ApiKeyApi) CreateKey(c *gin.Context) {
+func (aka *ApiKeyHandler) CreateKey(c *gin.Context) {
 	orgId := "a3dd56d4-c470-4f12-b47f-9f29a0380fc5"
 
 	key, err := aka.akSvc.GenerateNewApiKey(orgId)
@@ -48,7 +43,7 @@ func (aka *ApiKeyApi) CreateKey(c *gin.Context) {
 	responseSingleItem(c, key)
 }
 
-func (aka *ApiKeyApi) DeleteKey(c *gin.Context) {
+func (aka *ApiKeyHandler) DeleteKey(c *gin.Context) {
 	orgId := c.GetString("x-organization-id")
 	if orgId == "" {
 		responseError(c, http.StatusForbidden, "Valid API key for an organization required")
@@ -69,4 +64,14 @@ func (aka *ApiKeyApi) DeleteKey(c *gin.Context) {
 
 	aka.akSvc.DeleteKey(apiId)
 	c.Status(http.StatusNoContent)
+}
+
+func (aka *ApiKeyHandler) GetKey(c *gin.Context) {
+	apiId := c.Param("apidId")
+	apikey := aka.akSvc.GetKey(apiId)
+	if apikey == nil {
+		responseError(c, http.StatusNotFound, "API key not found")
+		return
+	}
+	responseSingleItem(c, apikey)
 }
