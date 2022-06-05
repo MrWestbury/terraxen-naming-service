@@ -9,10 +9,10 @@ import (
 )
 
 type OrganizationApi struct {
-	orgSvc *services.OrganizationService
+	orgSvc services.OrganizationServiceProvider
 }
 
-func RegisterOrganizationApi(parentGroup *gin.RouterGroup, orgSvc *services.OrganizationService) {
+func RegisterOrganizationApi(parentGroup *gin.RouterGroup, orgSvc services.OrganizationServiceProvider) {
 	group := parentGroup.Group("/organizations")
 	orgApi := &OrganizationApi{
 		orgSvc: orgSvc,

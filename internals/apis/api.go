@@ -2,7 +2,7 @@ package apis
 
 import (
 	"github.com/MrWestbury/terraxen-naming-service/internals/config"
-	"github.com/MrWestbury/terraxen-naming-service/internals/services"
+	"github.com/MrWestbury/terraxen-naming-service/internals/services/mongobackend"
 	"github.com/gin-gonic/gin"
 )
 
@@ -11,10 +11,10 @@ type Api struct {
 }
 
 func NewApi(config *config.Config) *Api {
-	orgService := services.NewOrganizationService(config)
-	nsService := services.NewNamespaceService(config)
-	schemaService := services.NewSchemaService(config)
-	apiKeyService := services.NewApiKeyService(config)
+	orgService := mongobackend.NewOrganizationService(config)
+	nsService := mongobackend.NewNamespaceService(config)
+	schemaService := mongobackend.NewSchemaService(config)
+	apiKeyService := mongobackend.NewApiKeyService(config)
 
 	api := &Api{
 		router: gin.Default(),

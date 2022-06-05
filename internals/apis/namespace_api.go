@@ -9,12 +9,12 @@ import (
 )
 
 type NamespaceApi struct {
-	orgSvc    services.OrganizationServiceInterface
-	nsSvc     services.NamespaceServiceInterface
-	schemaSvc *services.SchemaService
+	orgSvc    services.OrganizationServiceProvider
+	nsSvc     services.NamespaceServiceProvider
+	schemaSvc services.SchemaServiceProvider
 }
 
-func RegisterNamespaceApi(parentGroup *gin.RouterGroup, svc services.NamespaceServiceInterface, oSvc services.OrganizationServiceInterface, sSvc *services.SchemaService) {
+func RegisterNamespaceApi(parentGroup *gin.RouterGroup, svc services.NamespaceServiceProvider, oSvc services.OrganizationServiceProvider, sSvc services.SchemaServiceProvider) {
 	group := parentGroup.Group("/namespaces")
 	nsApi := &NamespaceApi{
 		nsSvc:     svc,
@@ -144,14 +144,14 @@ func (nsApi *NamespaceApi) Resolve(c *gin.Context) {
 		resultVars[k] = result
 	}
 
-	resolved, err := engine.ResolvePattern(resource.Pattern, resultVars)
+	resolved, err := engine.ResolvePattern(resource, resultVars)
 	if err != nil {
 		responseError(c, http.StatusInternalServerError, "Failed to resolve resource")
 		return
 	}
 	item := ResolveResourceResponse{
 		ResourceName: resourceName,
-		Pattern:      resource.Pattern,
+		Pattern:      resource,
 		Value:        resolved,
 	}
 	responseSingleItem(c, item)

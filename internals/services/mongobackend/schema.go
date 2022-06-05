@@ -1,4 +1,4 @@
-package services
+package mongobackend
 
 import (
 	"context"
@@ -7,33 +7,13 @@ import (
 	"strconv"
 
 	"github.com/MrWestbury/terraxen-naming-service/internals/config"
+	"github.com/MrWestbury/terraxen-naming-service/internals/services"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-var (
-	ErrSchemaNotFound = errors.New("schema not found")
-)
-
-type Schema struct {
-	Id             string
-	OrganizationId string
-	Name           string
-}
-
-type Resource struct {
-	Name    string `json:"name"`
-	Pattern string `json:"pattern"`
-}
-
-type SchemaVersion struct {
-	Id        int                 `json:"id"`
-	SchemaId  string              `json:"schema_id"`
-	Resources map[string]Resource `json:"resources"`
-}
 
 type SchemaService struct {
 	BaseService
@@ -49,7 +29,7 @@ func NewSchemaService(cfg *config.Config) *SchemaService {
 	return sSvc
 }
 
-func (sSvc *SchemaService) CreateSchema(orgId string, name string) (*Schema, error) {
+func (sSvc *SchemaService) CreateSchema(orgId string, name string) (*services.Schema, error) {
 	schema, err := sSvc.getSchemaByName(orgId, name)
 	if err != nil {
 		return nil, err
@@ -59,16 +39,16 @@ func (sSvc *SchemaService) CreateSchema(orgId string, name string) (*Schema, err
 		return nil, errors.New("schema already exists")
 	}
 
-	newSchema := &Schema{
+	newSchema := &services.Schema{
 		Id:             uuid.NewString(),
 		OrganizationId: orgId,
 		Name:           name,
 	}
 
-	newSchemaVersion := &SchemaVersion{
+	newSchemaVersion := &services.SchemaVersion{
 		Id:        1,
 		SchemaId:  newSchema.Id,
-		Resources: make(map[string]Resource),
+		Resources: make(map[string]string),
 	}
 
 	ctx := context.Background()
@@ -86,7 +66,7 @@ func (sSvc *SchemaService) CreateSchema(orgId string, name string) (*Schema, err
 	return newSchema, nil
 }
 
-func (sSvc *SchemaService) getSchemaByName(orgId string, name string) (*Schema, error) {
+func (sSvc *SchemaService) getSchemaByName(orgId string, name string) (*services.Schema, error) {
 	ctx := context.Background()
 	filter := bson.M{
 		"organizationid": orgId,
@@ -100,18 +80,18 @@ func (sSvc *SchemaService) getSchemaByName(orgId string, name string) (*Schema, 
 		return nil, result.Err()
 	}
 
-	var sch *Schema
-	err := result.Decode(sch)
+	var sch services.Schema
+	err := result.Decode(&sch)
 	if err != nil {
 		log.Printf("Failed to get schema by name: %v", err)
 		return nil, err
 	}
 
-	return sch, nil
+	return &sch, nil
 }
 
 // List schemas in a given organization by the organization ID
-func (sSvc *SchemaService) ListSchemaInOrganization(orgId string) ([]*Schema, error) {
+func (sSvc *SchemaService) ListSchemaInOrganization(orgId string) ([]*services.Schema, error) {
 	ctx := context.Background()
 	filter := bson.M{
 		"organizationid": orgId,
@@ -128,9 +108,9 @@ func (sSvc *SchemaService) ListSchemaInOrganization(orgId string) ([]*Schema, er
 	}
 	defer CloseCursor(ctx, cur)
 
-	results := make([]*Schema, 0)
+	results := make([]*services.Schema, 0)
 	for cur.Next(ctx) {
-		var schema Schema
+		var schema services.Schema
 		err = cur.Decode(&schema)
 		if err != nil {
 			log.Printf("Unable to decode schema: %v", err)
@@ -142,7 +122,7 @@ func (sSvc *SchemaService) ListSchemaInOrganization(orgId string) ([]*Schema, er
 	return results, nil
 }
 
-func (sSvc *SchemaService) GetSchemaById(orgId string, schemaId string) (*Schema, error) {
+func (sSvc *SchemaService) GetSchemaById(orgId string, schemaId string) (*services.Schema, error) {
 	ctx := context.Background()
 
 	filter := bson.M{
@@ -158,7 +138,7 @@ func (sSvc *SchemaService) GetSchemaById(orgId string, schemaId string) (*Schema
 		return nil, result.Err()
 	}
 
-	var sch Schema
+	var sch services.Schema
 	err := result.Decode(&sch)
 	if err != nil {
 		log.Printf("Failed to get schema by id: %v", err)
@@ -168,7 +148,7 @@ func (sSvc *SchemaService) GetSchemaById(orgId string, schemaId string) (*Schema
 	return &sch, nil
 }
 
-func (sSvc *SchemaService) UpdateSchema(schema Schema) error {
+func (sSvc *SchemaService) UpdateSchema(schema services.Schema) error {
 	ctx := context.Background()
 
 	filter := bson.M{
@@ -215,7 +195,7 @@ func (sSvc *SchemaService) DeleteSchema(orgId string, schemaId string) error {
 	return nil
 }
 
-func (sSvc *SchemaService) ListSchemaVersions(orgId string, schemaId string) ([]*SchemaVersion, error) {
+func (sSvc *SchemaService) ListSchemaVersions(orgId string, schemaId string) ([]*services.SchemaVersion, error) {
 	schema, err := sSvc.GetSchemaById(orgId, schemaId)
 	if err != nil {
 		log.Printf("failed to get schema while listing versions: %v", err)
@@ -223,7 +203,7 @@ func (sSvc *SchemaService) ListSchemaVersions(orgId string, schemaId string) ([]
 	}
 
 	if schema == nil {
-		return nil, ErrSchemaNotFound
+		return nil, services.ErrSchemaNotFound
 	}
 
 	ctx := context.Background()
@@ -241,9 +221,9 @@ func (sSvc *SchemaService) ListSchemaVersions(orgId string, schemaId string) ([]
 		return nil, err
 	}
 	defer CloseCursor(ctx, cur)
-	var results []*SchemaVersion
+	var results []*services.SchemaVersion
 	for cur.Next(ctx) {
-		var sv SchemaVersion
+		var sv services.SchemaVersion
 		err := cur.Decode(&sv)
 		if err != nil {
 			log.Printf("Failed to decode schema version: %v", err)
@@ -255,7 +235,7 @@ func (sSvc *SchemaService) ListSchemaVersions(orgId string, schemaId string) ([]
 	return results, nil
 }
 
-func (sSvc *SchemaService) CreateSchemaVersion(orgId string, schemaId string) (*SchemaVersion, error) {
+func (sSvc *SchemaService) CreateSchemaVersion(orgId string, schemaId string, resources map[string]string, published bool) (*services.SchemaVersion, error) {
 	latestVersion, err := sSvc.GetSchemaVersion(orgId, schemaId, "latest")
 	if err != nil {
 		log.Printf("Failed to get latest schema version: %v", err)
@@ -264,19 +244,25 @@ func (sSvc *SchemaService) CreateSchemaVersion(orgId string, schemaId string) (*
 
 	newVersion := latestVersion.Id + 1
 
-	newSchemaVersion := &SchemaVersion{
+	newSchemaVersion := &services.SchemaVersion{
 		Id:        newVersion,
 		SchemaId:  schemaId,
-		Resources: latestVersion.Resources,
+		Resources: resources,
+		Published: published,
 	}
 
 	ctx := context.Background()
 
-	sSvc.collection.InsertOne(ctx, newSchemaVersion)
+	_, err = sSvc.versionCollection.InsertOne(ctx, newSchemaVersion)
+	if err != nil {
+		log.Printf("Failed to create new schema version: %v", err)
+		return nil, err
+	}
+
 	return newSchemaVersion, nil
 }
 
-func (sSvc *SchemaService) GetSchemaVersion(orgId string, schemaId string, schemaVersionId string) (*SchemaVersion, error) {
+func (sSvc *SchemaService) GetSchemaVersion(orgId string, schemaId string, schemaVersionId string) (*services.SchemaVersion, error) {
 
 	schema, err := sSvc.GetSchemaById(orgId, schemaId)
 	if err != nil {
@@ -312,12 +298,35 @@ func (sSvc *SchemaService) GetSchemaVersion(orgId string, schemaId string, schem
 		return nil, result.Err()
 	}
 
-	var sv *SchemaVersion
-	err = result.Decode(sv)
+	var sv services.SchemaVersion
+	err = result.Decode(&sv)
 	if err != nil {
 		log.Panicf("Failed to decode schema version: %v", err)
 		return nil, err
 	}
 
-	return sv, nil
+	return &sv, nil
+}
+
+func (sSvc *SchemaService) UpdateSchemaVersion(orgId string, schemaId string, schemaVersionId string, resources map[string]string, published bool) (*services.SchemaVersion, error) {
+	schemaVersion, err := sSvc.GetSchemaVersion(orgId, schemaId, schemaVersionId)
+	if err != nil {
+		log.Printf("Failed to get schema version during update, %v", err)
+		return nil, err
+	}
+
+	schemaVersion.Published = published
+	schemaVersion.Resources = resources
+
+	ctx := context.Background()
+	filter := bson.M{
+		"schemaid": schemaId,
+		"id":       schemaVersion.Id,
+	}
+	results := sSvc.versionCollection.FindOneAndReplace(ctx, filter, schemaVersion)
+	if results.Err() != nil {
+		log.Printf("failed to update schema: %v", results.Err())
+		return nil, results.Err()
+	}
+	return schemaVersion, nil
 }

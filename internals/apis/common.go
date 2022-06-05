@@ -17,6 +17,7 @@ type ListMeta struct {
 func DecodeBody(c *gin.Context, result interface{}) error {
 	decoder := json.NewDecoder(c.Request.Body)
 	decoder.DisallowUnknownFields()
+	decoder.UseNumber()
 	if err := decoder.Decode(&result); err != nil {
 		log.Printf("failed to decode body: %v", err)
 		responseError(c, http.StatusBadRequest, "Unable to process request body")

@@ -1,4 +1,4 @@
-package services
+package mongobackend
 
 import (
 	"context"
@@ -6,32 +6,11 @@ import (
 	"log"
 
 	"github.com/MrWestbury/terraxen-naming-service/internals/config"
+	"github.com/MrWestbury/terraxen-naming-service/internals/services"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
-type Organization struct {
-	Id      string            `json:"id"`
-	Name    string            `json:"name"`
-	OrgVars map[string]string `json:"vars"`
-}
-
-type OrganizationVar struct {
-	Id    string `json:"id"`
-	OrgId string `json:"orgid"`
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
-type OrganizationServiceInterface interface {
-	NewOrganization(organizationName string) (*Organization, error)
-	GetOrganizationById(orgId string) (*Organization, error)
-	ExistsById(orgId string) bool
-	ExistsByName(orgName string) bool
-	UpdateOrganization(orgId string, orgName string, orgVars map[string]string) (*Organization, error)
-	DeleteOrganization(organizationId string) error
-}
 
 type OrganizationService struct {
 	BaseService
@@ -46,7 +25,7 @@ func NewOrganizationService(cfg *config.Config) *OrganizationService {
 	return orgsvc
 }
 
-func (orgsvc *OrganizationService) NewOrganization(orgName string) (*Organization, error) {
+func (orgsvc *OrganizationService) NewOrganization(orgName string) (*services.Organization, error) {
 	org, err := orgsvc.getOrganizationByName(orgName)
 	if err != nil {
 		return nil, err
@@ -56,7 +35,7 @@ func (orgsvc *OrganizationService) NewOrganization(orgName string) (*Organizatio
 		return nil, errors.New("organization already exists")
 	}
 
-	newOrg := &Organization{
+	newOrg := &services.Organization{
 		Id:      uuid.NewString(),
 		Name:    orgName,
 		OrgVars: make(map[string]string),
@@ -70,26 +49,27 @@ func (orgsvc *OrganizationService) NewOrganization(orgName string) (*Organizatio
 	return newOrg, err
 }
 
-func (orgsvc *OrganizationService) getOrganizationByName(orgName string) (*Organization, error) {
+func (orgsvc *OrganizationService) getOrganizationByName(orgName string) (*services.Organization, error) {
 	ctx := context.Background()
 	result := orgsvc.collection.FindOne(ctx, bson.M{"name": orgName})
 	if result.Err() == mongo.ErrNoDocuments {
 		return nil, nil
 	}
-	org := &Organization{}
-	result.Decode(org)
-	return org, nil
+
+	var org services.Organization
+	result.Decode(&org)
+	return &org, nil
 }
 
-func (orgsvc *OrganizationService) GetOrganizationById(orgId string) (*Organization, error) {
+func (orgsvc *OrganizationService) GetOrganizationById(orgId string) (*services.Organization, error) {
 	ctx := context.Background()
 	result := orgsvc.collection.FindOne(ctx, bson.M{"id": orgId})
 	if result.Err() == mongo.ErrNoDocuments {
 		return nil, nil
 	}
-	org := &Organization{}
-	result.Decode(org)
-	return org, nil
+	var org services.Organization
+	result.Decode(&org)
+	return &org, nil
 }
 
 func (orgsvc *OrganizationService) ExistsById(orgId string) bool {
@@ -104,7 +84,7 @@ func (orgsvc *OrganizationService) ExistsByName(orgName string) bool {
 	return result.Err() != mongo.ErrNoDocuments
 }
 
-func (orgSvc *OrganizationService) UpdateOrganization(orgId string, orgName string, orgVars map[string]string) (*Organization, error) {
+func (orgSvc *OrganizationService) UpdateOrganization(orgId string, orgName string, orgVars map[string]string) (*services.Organization, error) {
 	org, err := orgSvc.GetOrganizationById(orgId)
 	if err != nil {
 		log.Printf("Failed to update organization: %v", err)

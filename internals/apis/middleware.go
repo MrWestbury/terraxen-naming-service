@@ -22,10 +22,10 @@ type TerraxenClaims struct {
 }
 
 type Middlewares struct {
-	apiSvc *services.ApiKeyService
+	apiSvc services.ApiKeyProvider
 }
 
-func NewMiddlewares(apiKeySvc *services.ApiKeyService) *Middlewares {
+func NewMiddlewares(apiKeySvc services.ApiKeyProvider) *Middlewares {
 	mdw := &Middlewares{
 		apiSvc: apiKeySvc,
 	}

@@ -8,10 +8,10 @@ import (
 )
 
 type ApiKeyApi struct {
-	akSvc *services.ApiKeyService
+	akSvc services.ApiKeyProvider
 }
 
-func RegisterApiKeyApi(parentGroup *gin.RouterGroup, apiKeySvc *services.ApiKeyService) {
+func RegisterApiKeyApi(parentGroup *gin.RouterGroup, apiKeySvc services.ApiKeyProvider) {
 	group := parentGroup.Group("/apikeys")
 	akApi := &ApiKeyApi{
 		akSvc: apiKeySvc,

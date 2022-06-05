@@ -5,16 +5,15 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/MrWestbury/terraxen-naming-service/internals/engine"
 	"github.com/MrWestbury/terraxen-naming-service/internals/services"
 	"github.com/gin-gonic/gin"
 )
 
 type SchemaApi struct {
-	schemaSvc *services.SchemaService
+	schemaSvc services.SchemaServiceProvider
 }
 
-func RegisterSchemaApi(parentGroup *gin.RouterGroup, svc *services.SchemaService) {
+func RegisterSchemaApi(parentGroup *gin.RouterGroup, svc services.SchemaServiceProvider) {
 	group := parentGroup.Group("/schemas")
 
 	schemaApi := &SchemaApi{
@@ -76,13 +75,15 @@ func (sApi *SchemaApi) CreateSchema(c *gin.Context) {
 	}
 
 	schema, err := sApi.schemaSvc.CreateSchema(orgId, schemaReq.Name)
-	if err.Error() == "schema already exists" {
-		responseError(c, http.StatusConflict, "Schema name already exists in organization")
-		return
-	} else if err != nil {
-		log.Printf("failed to create schema: %v", err)
-		responseError(c, http.StatusInternalServerError, "Failed to create schema")
-		return
+	if err != nil {
+		if err.Error() == "schema already exists" {
+			responseError(c, http.StatusConflict, "Schema name already exists in organization")
+			return
+		} else {
+			log.Printf("failed to create schema: %v", err)
+			responseError(c, http.StatusInternalServerError, "Failed to create schema")
+			return
+		}
 	}
 
 	responseSingleItem(c, schema)
@@ -143,97 +144,4 @@ func (sApi *SchemaApi) DeleteSchema(c *gin.Context) {
 		}
 		return
 	}
-}
-
-func (sApi *SchemaApi) ListSchemaVersions(c *gin.Context) {
-	orgId := c.GetString(ORG_CONTEXT_NAME)
-	schemaId := c.Param("schema")
-
-	versions, err := sApi.schemaSvc.ListSchemaVersions(orgId, schemaId)
-	if err != nil {
-		if err == services.ErrSchemaNotFound {
-			responseError(c, http.StatusNotFound, "Schema not found")
-			return
-		}
-		responseError(c, http.StatusInternalServerError, "Something went wrong")
-		return
-	}
-
-	responseSingleItem(c, versions)
-}
-
-func (sApi *SchemaApi) CreateSchemaVersion(c *gin.Context) {
-	orgId := c.GetString(ORG_CONTEXT_NAME)
-	schemaId := c.Param("schema")
-
-	sv, err := sApi.schemaSvc.CreateSchemaVersion(orgId, schemaId)
-	if err != nil {
-		responseError(c, http.StatusInternalServerError, "Something went wrong")
-		return
-	}
-
-	responseSingleItem(c, sv)
-}
-
-func (sApi *SchemaApi) GetSchemaVersion(c *gin.Context) {
-	orgId := c.GetString(ORG_CONTEXT_NAME)
-	schemaId := c.Param("schema")
-	schemaVersionId := c.Param("version")
-
-	sv, err := sApi.schemaSvc.GetSchemaVersion(orgId, schemaId, schemaVersionId)
-	if err != nil {
-		responseError(c, http.StatusInternalServerError, "Something went wrong")
-		return
-	}
-
-	responseSingleItem(c, sv)
-}
-
-func (sApi *SchemaApi) UpdateSchemaVersion(c *gin.Context) {
-	// TODO: How do we decide if to update or create new
-	// Breaking changes should create a new version
-}
-
-func (sApi *SchemaApi) DeleteSchemaVersion(c *gin.Context) {
-	// TODO: If we delete, do we actually delete, or just disable?
-}
-
-func (sApi *SchemaApi) ResolveResourceName(c *gin.Context) {
-	orgId := c.GetString(ORG_CONTEXT_NAME)
-	schemaId := c.Param("schema")
-	schemaVersionId := c.Param("version")
-
-	var resolveReq ResolveSchemaVersionRequest
-	decoder := json.NewDecoder(c.Request.Body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&resolveReq); err != nil {
-		responseError(c, http.StatusBadRequest, "Unable to process request")
-		return
-	}
-
-	sv, err := sApi.schemaSvc.GetSchemaVersion(orgId, schemaId, schemaVersionId)
-	if err != nil {
-		responseError(c, http.StatusInternalServerError, "Something went wrong")
-		return
-	}
-
-	res, found := sv.Resources[resolveReq.ResouceName]
-	if !found {
-		responseError(c, http.StatusNotFound, "Resource name not found in schema")
-		return
-	}
-
-	result, err := engine.ResolvePattern(res.Pattern, resolveReq.Varibales)
-	if err != nil {
-		responseError(c, http.StatusInternalServerError, "Something went wrong")
-		return
-	}
-
-	response := ResolveResourceResponse{
-		ResourceName: res.Name,
-		Pattern:      res.Pattern,
-		Value:        result,
-	}
-
-	responseSingleItem(c, response)
 }

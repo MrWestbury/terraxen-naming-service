@@ -1,4 +1,4 @@
-package services
+package mongobackend
 
 import (
 	"context"
@@ -7,20 +7,12 @@ import (
 	"time"
 
 	"github.com/MrWestbury/terraxen-naming-service/internals/config"
+	"github.com/MrWestbury/terraxen-naming-service/internals/services"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
-
-type ApiKey struct {
-	Id             string            `json:"id"`
-	OrganizationId string            `json:"organization_id"`
-	Name           string            `json:"name"`
-	Key            string            `json:"key"`
-	Expires        time.Time         `json:"expires"`
-	Scope          map[string]string `json:"scope"`
-}
 
 type ApiKeyService struct {
 	BaseService
@@ -33,11 +25,11 @@ func NewApiKeyService(cfg *config.Config) *ApiKeyService {
 	return apiKeySvc
 }
 
-func (akSvc *ApiKeyService) GenerateNewApiKey(orgId string) (*ApiKey, error) {
+func (akSvc *ApiKeyService) GenerateNewApiKey(orgId string) (*services.ApiKey, error) {
 	randStr := RandString(20)
 	duration, _ := time.ParseDuration("1h")
 	expires := time.Now().Add(duration)
-	ak := &ApiKey{
+	ak := &services.ApiKey{
 		Id:             uuid.NewString(),
 		OrganizationId: orgId,
 		Key:            fmt.Sprintf("API-%s", randStr),
@@ -62,7 +54,7 @@ func RandString(n int) string {
 
 }
 
-func (akSvc *ApiKeyService) ListKeys(orgId string) ([]*ApiKey, error) {
+func (akSvc *ApiKeyService) ListKeys(orgId string) ([]*services.ApiKey, error) {
 	ctx := context.Background()
 	filter := bson.D{
 		primitive.E{Key: "organizationid", Value: orgId},
@@ -73,9 +65,9 @@ func (akSvc *ApiKeyService) ListKeys(orgId string) ([]*ApiKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	var result []*ApiKey
+	var result []*services.ApiKey
 	for cur.Next(ctx) {
-		var apiKey ApiKey
+		var apiKey services.ApiKey
 		err = cur.Decode(&apiKey)
 		if err != nil {
 			return nil, err
@@ -86,15 +78,15 @@ func (akSvc *ApiKeyService) ListKeys(orgId string) ([]*ApiKey, error) {
 	return result, nil
 }
 
-func (akSvc *ApiKeyService) GetKey(key string) *ApiKey {
+func (akSvc *ApiKeyService) GetKey(key string) *services.ApiKey {
 	ctx := context.Background()
 	result := akSvc.collection.FindOne(ctx, bson.M{"key": key})
 	if result.Err() == mongo.ErrNoDocuments {
 		return nil
 	}
-	apiKey := &ApiKey{}
-	result.Decode(apiKey)
-	return apiKey
+	var apiKey services.ApiKey
+	result.Decode(&apiKey)
+	return &apiKey
 }
 
 func (akSvc *ApiKeyService) DeleteKey(apiId string) error {
